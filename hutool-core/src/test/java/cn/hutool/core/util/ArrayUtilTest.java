@@ -42,6 +42,11 @@ public class ArrayUtilTest {
 		isEmpty = ArrayUtil.isEmpty(d);
 		//noinspection ConstantConditions
 		Assert.assertTrue(isEmpty);
+
+		// Object数组
+		Object[] e = new Object[]{"1", "2", 3, 4D};
+		final boolean empty = ArrayUtil.isEmpty(e);
+		Assert.assertFalse(empty);
 	}
 
 	@Test
@@ -122,6 +127,26 @@ public class ArrayUtilTest {
 	}
 
 	@Test
+	public void containsAnyTest() {
+		Integer[] a = {1, 2, 3, 4, 3, 6};
+		boolean contains = ArrayUtil.containsAny(a, 4, 10, 40);
+		Assert.assertTrue(contains);
+
+		contains = ArrayUtil.containsAny(a, 10, 40);
+		Assert.assertFalse(contains);
+	}
+
+	@Test
+	public void containsAllTest() {
+		Integer[] a = {1, 2, 3, 4, 3, 6};
+		boolean contains = ArrayUtil.containsAll(a, 4, 2, 6);
+		Assert.assertTrue(contains);
+
+		contains = ArrayUtil.containsAll(a, 1, 2, 3, 5);
+		Assert.assertFalse(contains);
+	}
+
+	@Test
 	public void mapTest() {
 		String[] keys = {"a", "b", "c"};
 		Integer[] values = {1, 2, 3};
@@ -167,13 +192,13 @@ public class ArrayUtilTest {
 		BigDecimal one = new BigDecimal("1.00");
 		BigDecimal two = new BigDecimal("2.0");
 		BigDecimal three = new BigDecimal("3");
-		BigDecimal[] bigDecimals = {two,one,three};
+		BigDecimal[] bigDecimals = {two, one, three};
 
 		BigDecimal minAccuracy = ArrayUtil.min(bigDecimals, Comparator.comparingInt(BigDecimal::scale));
-		Assert.assertEquals(minAccuracy,three);
+		Assert.assertEquals(minAccuracy, three);
 
-		BigDecimal maxAccuracy = ArrayUtil.max(bigDecimals,Comparator.comparingInt(BigDecimal::scale));
-		Assert.assertEquals(maxAccuracy,one);
+		BigDecimal maxAccuracy = ArrayUtil.max(bigDecimals, Comparator.comparingInt(BigDecimal::scale));
+		Assert.assertEquals(maxAccuracy, one);
 	}
 
 	@Test
@@ -270,12 +295,26 @@ public class ArrayUtilTest {
 	}
 
 	@Test
-	public void toArrayTest(){
+	public void toArrayTest() {
 		final ArrayList<String> list = CollUtil.newArrayList("A", "B", "C", "D");
 		final String[] array = ArrayUtil.toArray(list, String.class);
 		Assert.assertEquals("A", array[0]);
 		Assert.assertEquals("B", array[1]);
 		Assert.assertEquals("C", array[2]);
 		Assert.assertEquals("D", array[3]);
+	}
+
+	@Test
+	public void addAllTest() {
+		final int[] ints = ArrayUtil.addAll(new int[]{1, 2, 3}, new int[]{4, 5, 6});
+		Assert.assertArrayEquals(new int[]{1, 2, 3, 4, 5, 6}, ints);
+	}
+
+	@Test
+	public void isAllNotNullTest() {
+		String[] allNotNull = {"aa", "bb", "cc", "dd", "bb", "dd"};
+		Assert.assertTrue(ArrayUtil.isAllNotNull(allNotNull));
+		String[] hasNull = {"aa", "bb", "cc", null, "bb", "dd"};
+		Assert.assertFalse(ArrayUtil.isAllNotNull(hasNull));
 	}
 }

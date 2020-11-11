@@ -13,6 +13,7 @@ import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -91,7 +92,7 @@ public class ReflectUtil {
 	}
 
 	/**
-	 * 获得一个类中所有字段列表，直接反射获取，无缓存
+	 * 获得一个类中所有构造列表，直接反射获取，无缓存
 	 *
 	 * @param beanClass 类
 	 * @return 字段列表
@@ -138,7 +139,7 @@ public class ReflectUtil {
 	}
 
 	/**
-	 * 查找指定类中的所有字段（包括非public字段），也包括父类和Object类的字段， 字段不存在则返回<code>null</code>
+	 * 查找指定类中的指定name的字段（包括非public字段），也包括父类和Object类的字段， 字段不存在则返回<code>null</code>
 	 *
 	 * @param beanClass 被查找字段的类,不能为null
 	 * @param name      字段名
@@ -147,26 +148,20 @@ public class ReflectUtil {
 	 */
 	public static Field getField(Class<?> beanClass, String name) throws SecurityException {
 		final Field[] fields = getFields(beanClass);
-		if (ArrayUtil.isNotEmpty(fields)) {
-			for (Field field : fields) {
-				if ((name.equals(getFieldName(field)))) {
-					return field;
-				}
-			}
-		}
-		return null;
+		return ArrayUtil.firstMatch((field)->name.equals(getFieldName(field)), fields);
 	}
 
 	/**
-	 * 获取指定类中字段名和字段对应的Map，包括其父类中的字段
+	 * 获取指定类中字段名和字段对应的有序Map，包括其父类中的字段<br>
+	 * 如果子类与父类中存在同名字段，则这两个字段同时存在，子类字段在前，父类字段在后。
 	 *
 	 * @param beanClass 类
-	 * @return 字段名和字段对应的Map
+	 * @return 字段名和字段对应的Map，有序
 	 * @since 5.0.7
 	 */
 	public static Map<String, Field> getFieldMap(Class<?> beanClass) {
 		final Field[] fields = getFields(beanClass);
-		final HashMap<String, Field> map = MapUtil.newHashMap(fields.length);
+		final HashMap<String, Field> map = MapUtil.newHashMap(fields.length, true);
 		for (Field field : fields) {
 			map.put(field.getName(), field);
 		}
@@ -174,7 +169,8 @@ public class ReflectUtil {
 	}
 
 	/**
-	 * 获得一个类中所有字段列表，包括其父类中的字段
+	 * 获得一个类中所有字段列表，包括其父类中的字段<br>
+	 * 如果子类与父类中存在同名字段，则这两个字段同时存在，子类字段在前，父类字段在后。
 	 *
 	 * @param beanClass 类
 	 * @return 字段列表
@@ -191,14 +187,15 @@ public class ReflectUtil {
 	}
 
 	/**
-	 * 获得一个类中所有字段列表，直接反射获取，无缓存
+	 * 获得一个类中所有字段列表，直接反射获取，无缓存<br>
+	 * 如果子类与父类中存在同名字段，则这两个字段同时存在，子类字段在前，父类字段在后。
 	 *
 	 * @param beanClass           类
-	 * @param withSuperClassFieds 是否包括父类的字段列表
+	 * @param withSuperClassFields 是否包括父类的字段列表
 	 * @return 字段列表
 	 * @throws SecurityException 安全检查异常
 	 */
-	public static Field[] getFieldsDirectly(Class<?> beanClass, boolean withSuperClassFieds) throws SecurityException {
+	public static Field[] getFieldsDirectly(Class<?> beanClass, boolean withSuperClassFields) throws SecurityException {
 		Assert.notNull(beanClass);
 
 		Field[] allFields = null;
@@ -211,7 +208,7 @@ public class ReflectUtil {
 			} else {
 				allFields = ArrayUtil.append(allFields, declaredFields);
 			}
-			searchType = withSuperClassFieds ? searchType.getSuperclass() : null;
+			searchType = withSuperClassFields ? searchType.getSuperclass() : null;
 		}
 
 		return allFields;
@@ -769,13 +766,32 @@ public class ReflectUtil {
 
 	/**
 	 * 尝试遍历并调用此类的所有构造方法，直到构造成功并返回
+	 * <p>
+	 * 对于某些特殊的接口，按照其默认实现实例化，例如：
+	 * <pre>
+	 *     Map       -》 HashMap
+	 *     Collction -》 ArrayList
+	 *     List      -》 ArrayList
+	 *     Set       -》 HashSet
+	 * </pre>
 	 *
 	 * @param <T>       对象类型
 	 * @param beanClass 被构造的类
 	 * @return 构造后的对象
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T> T newInstanceIfPossible(Class<T> beanClass) {
 		Assert.notNull(beanClass);
+
+		// 某些特殊接口的实例化按照默认实现进行
+		if (beanClass.isAssignableFrom(AbstractMap.class)) {
+			beanClass = (Class<T>) HashMap.class;
+		} else if (beanClass.isAssignableFrom(List.class)) {
+			beanClass = (Class<T>) ArrayList.class;
+		} else if (beanClass.isAssignableFrom(Set.class)) {
+			beanClass = (Class<T>) HashSet.class;
+		}
+
 		try {
 			return newInstance(beanClass);
 		} catch (Exception e) {
